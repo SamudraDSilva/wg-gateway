@@ -125,12 +125,14 @@ function CallbackContent() {
     // 3. Perform Backend Token Exchange
     async function exchangeToken() {
       try {
+        const redirectUri = `${window.location.origin}/onboard/callback`;
         const res = await fetch("/api/connections/exchange", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             code,
             workspace_id: workspaceId,
+            redirect_uri: redirectUri,
           }),
         });
 
