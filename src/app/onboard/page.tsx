@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, useEffect } from "react";
+import { Suspense, useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 
 interface MetaConfig {
@@ -11,40 +11,55 @@ interface MetaConfig {
 
 function OnboardingContent() {
   const searchParams = useSearchParams();
-  const workspaceId = searchParams.get("workspace_id") || "default";
-  const sessionId = searchParams.get("session_id") || undefined;
-  const returnUrl = searchParams.get("return_url") || undefined;
-  const appName = searchParams.get("app_name") || "Partner Platform";
+  const rawWorkspace = searchParams.get("workspace_id")?.trim();
+  const workspaceId = rawWorkspace || "default";
+  const sessionId = searchParams.get("session_id")?.trim() || undefined;
+  const returnUrl = searchParams.get("return_url")?.trim() || undefined;
+  const appName = searchParams.get("app_name")?.trim() || "Partner Platform";
 
   const [metaConfig, setMetaConfig] = useState<MetaConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [redirecting, setRedirecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorDetails, setErrorDetails] = useState<string | null>(null);
 
   // Fetch Meta configuration dynamically from backend
-  useEffect(() => {
-    async function fetchConfig() {
-      try {
-        setLoading(true);
-        const res = await fetch("/api/meta-config", { cache: "no-store" });
-        if (!res.ok) {
-          throw new Error(`Failed to load Meta config (HTTP ${res.status})`);
-        }
-        const data: MetaConfig = await res.json();
-        if (!data.app_id) {
-          throw new Error("Backend did not return a valid Meta App ID");
-        }
-        setMetaConfig(data);
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : "Failed to load Meta configuration";
-        setError(msg);
-      } finally {
-        setLoading(false);
-      }
-    }
+  const fetchConfig = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      setErrorDetails(null);
 
-    void fetchConfig();
+      const res = await fetch("/api/meta-config", { cache: "no-store" });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        const msg = data.error || `Failed to load Meta configuration (HTTP ${res.status})`;
+        setError(msg);
+        if (data.details) {
+          setErrorDetails(typeof data.details === "string" ? data.details : JSON.stringify(data.details));
+        }
+        return;
+      }
+
+      if (!data.app_id || !data.config_id) {
+        setError("Incomplete Meta configuration received from backend");
+        setErrorDetails("Both 'app_id' and 'config_id' are required to start Embedded Signup.");
+        return;
+      }
+
+      setMetaConfig(data);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Network error loading Meta configuration";
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void fetchConfig();
+  }, [fetchConfig]);
 
   // In-place direct navigation to Meta OAuth Dialog (NO SECOND POPUP!)
   const handleLaunchInPlace = () => {
@@ -60,6 +75,7 @@ function OnboardingContent() {
       workspace_id: workspaceId,
       session_id: sessionId,
       return_url: returnUrl,
+      app_name: appName,
     };
 
     const oauthEndpoint = `https://www.facebook.com/${metaConfig.version || "v20.0"}/dialog/oauth`;
@@ -71,14 +87,13 @@ function OnboardingContent() {
       state: JSON.stringify(stateObj),
     });
 
-    // In-place navigation: replaces this popup window's location with Facebook
     window.location.href = `${oauthEndpoint}?${params.toString()}`;
   };
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-center items-center p-4">
       <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl relative overflow-hidden">
-        {/* Decorative glow */}
+        {/* Decorative ambient glows */}
         <div className="absolute -top-24 -left-24 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
 
@@ -98,10 +113,35 @@ function OnboardingContent() {
           </div>
         </div>
 
-        {/* Error Notification */}
+        {/* Error Notification Card with Retry */}
         {error && (
-          <div className="mb-6 p-3 rounded-xl bg-red-950/60 border border-red-800/80 text-red-300 text-xs">
-            {error}
+          <div className="mb-6 p-4 rounded-xl bg-red-950/70 border border-red-800/90 text-red-200 text-xs space-y-2">
+            <div className="flex items-start gap-2 font-semibold">
+              <span className="text-red-400 text-sm">⚠</span>
+              <span>Gateway Error: {error}</span>
+            </div>
+            {errorDetails && (
+              <p className="text-[11px] text-red-300/80 font-mono pl-5 break-all">
+                {errorDetails}
+              </p>
+            )}
+            <div className="pt-2 pl-5 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={fetchConfig}
+                disabled={loading}
+                className="px-3 py-1 bg-red-900/60 hover:bg-red-850 border border-red-700 rounded text-red-100 font-medium cursor-pointer text-[11px] transition"
+              >
+                {loading ? "Retrying..." : "↻ Retry Connection"}
+              </button>
+              <button
+                type="button"
+                onClick={() => window.close()}
+                className="px-3 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded text-slate-300 font-medium cursor-pointer text-[11px] transition"
+              >
+                Close Window
+              </button>
+            </div>
           </div>
         )}
 
@@ -125,8 +165,8 @@ function OnboardingContent() {
           <div className="pt-2">
             <button
               onClick={handleLaunchInPlace}
-              disabled={loading || redirecting || !metaConfig}
-              className="w-full flex items-center justify-center gap-2 py-3.5 px-4 rounded-xl font-semibold text-white bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 transition shadow-lg shadow-emerald-950/50 cursor-pointer text-sm"
+              disabled={loading || redirecting || !metaConfig || !!error}
+              className="w-full flex items-center justify-center gap-2 py-3.5 px-4 rounded-xl font-semibold text-white bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed transition shadow-lg shadow-emerald-950/50 cursor-pointer text-sm"
             >
               {redirecting ? (
                 <>
@@ -134,7 +174,12 @@ function OnboardingContent() {
                   <span>Redirecting to Facebook...</span>
                 </>
               ) : loading ? (
-                <span>Loading Meta Configuration...</span>
+                <>
+                  <span className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                  <span>Loading Meta Configuration...</span>
+                </>
+              ) : error ? (
+                <span>Setup Unavailable</span>
               ) : (
                 <>
                   <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">

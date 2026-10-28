@@ -1,27 +1,81 @@
 import { NextResponse } from "next/server";
+import { gatewayConfig } from "@/lib/config";
 
-const WG_MESSAGING_URL = process.env.WG_MESSAGING_URL || "http://localhost:20080";
+export const dynamic = "force-dynamic";
 
 export async function GET() {
-  try {
-    const res = await fetch(`${WG_MESSAGING_URL}/v1/connections/config`, {
-      cache: "no-store",
-    });
+  const targetUrl = `${gatewayConfig.wgMessagingUrl}/v1/connections/config`;
 
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+    const res = await fetch(targetUrl, {
+      cache: "no-store",
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    const contentType = res.headers.get("content-type") || "";
     if (!res.ok) {
+      let errorBody: unknown = null;
+      if (contentType.includes("application/json")) {
+        errorBody = await res.json().catch(() => null);
+      } else {
+        errorBody = await res.text().catch(() => null);
+      }
+
+      console.error("[api/meta-config] Backend returned non-OK status:", res.status, errorBody);
+
       return NextResponse.json(
-        { error: "Backend failed to return Meta config", status: res.status },
-        { status: res.status },
+        {
+          error: "Backend failed to provide Meta configuration",
+          backend_status: res.status,
+          details: errorBody,
+        },
+        { status: res.status >= 500 ? 502 : res.status },
+      );
+    }
+
+    if (!contentType.includes("application/json")) {
+      return NextResponse.json(
+        {
+          error: "Backend returned invalid non-JSON content type",
+          details: await res.text().catch(() => ""),
+        },
+        { status: 502 },
       );
     }
 
     const data = await res.json();
+    if (!data?.app_id) {
+      return NextResponse.json(
+        {
+          error: "Backend returned incomplete Meta configuration (missing app_id)",
+          details: data,
+        },
+        { status: 502 },
+      );
+    }
+
     return NextResponse.json(data);
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Unknown error";
+    const isAbort = err instanceof Error && err.name === "AbortError";
+    const errorMessage = isAbort
+      ? `Timed out after 8s connecting to backend at ${gatewayConfig.wgMessagingUrl}`
+      : err instanceof Error
+        ? err.message
+        : "Unknown network error";
+
+    console.error("[api/meta-config] Failed to reach backend:", errorMessage);
+
     return NextResponse.json(
-      { error: "Failed to connect to wg-messaging backend for Meta config", details: message },
-      { status: 502 },
+      {
+        error: "Messaging backend is currently unreachable",
+        backend_url: gatewayConfig.wgMessagingUrl,
+        details: errorMessage,
+      },
+      { status: 503 },
     );
   }
 }
