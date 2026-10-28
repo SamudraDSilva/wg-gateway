@@ -29,9 +29,14 @@ function CallbackContent() {
   const metaErrorDescription = searchParams.get("error_description");
   const metaErrorCode = searchParams.get("error_code");
 
-  const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [errorDetails, setErrorDetails] = useState<string | null>(null);
+  const isDirect = !code && !metaError && !metaErrorReason && !metaErrorDescription;
+  const [status, setStatus] = useState<"loading" | "success" | "error">(isDirect ? "error" : "loading");
+  const [errorMessage, setErrorMessage] = useState<string | null>(
+    isDirect ? "Direct Access Prohibited (403)" : null,
+  );
+  const [errorDetails, setErrorDetails] = useState<string | null>(
+    isDirect ? "The callback endpoint requires an active Meta OAuth transaction." : null,
+  );
   const [phoneInfo, setPhoneInfo] = useState<string | null>(null);
 
   // Parse state parameters
