@@ -31,3 +31,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# assistant configs
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+.agents/
+.claude/
