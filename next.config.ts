@@ -7,7 +7,17 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: [
     "sedate-immunity-amid.ngrok-free.dev",
     "porous-waviness-shrunk.ngrok-free.dev",
+    "localhost:3000",
   ],
+  turbopack: {
+    root: process.cwd(),
+    rules: {
+      "*.css": {
+        loaders: ["@tailwindcss/turbopack"],
+        as: "*.css",
+      },
+    },
+  },
   async rewrites() {
     return [
       // Transparent reverse-proxy to wg-messaging backend on port 20080
