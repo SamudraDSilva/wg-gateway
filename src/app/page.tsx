@@ -1,59 +1,32 @@
-"use client";
-
-import { useState } from "react";
-
 export default function GatewayHome() {
-  const [workspace, setWorkspace] = useState("default");
-
-  const openPopup = () => {
-    const returnUrl = encodeURIComponent(window.location.origin);
-    const url = `/onboard?workspace_id=${encodeURIComponent(workspace)}&return_url=${returnUrl}`;
-    window.open(url, "wa_onboard", "width=520,height=740,menubar=no,toolbar=no,status=no");
-  };
-
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-center items-center p-6">
-      <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl relative">
-        <div className="flex items-center gap-3 mb-6 pb-6 border-b border-slate-800">
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-lg">
-            W
-          </div>
-          <div>
-            <h1 className="text-lg font-bold text-white tracking-tight">Waba Guru Gateway</h1>
-            <p className="text-xs text-slate-400 font-mono">Hosted WhatsApp Onboarding Service</p>
-          </div>
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-center items-center p-6 select-none">
+      <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl relative text-center">
+        {/* Glow */}
+        <div className="absolute -top-16 -left-16 w-36 h-36 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
+
+        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 mb-4 mx-auto">
+          <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          </svg>
         </div>
 
-        <div className="space-y-4">
-          <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1.5">
-              Target Partner Workspace:
-            </label>
-            <input
-              type="text"
-              value={workspace}
-              onChange={(e) => setWorkspace(e.target.value)}
-              placeholder="e.g. default, acme_corp, dialog"
-              className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm font-mono text-white focus:outline-none focus:border-emerald-500 transition"
-            />
-          </div>
+        <h1 className="text-xl font-bold text-white tracking-tight">Waba Guru Gateway</h1>
+        <p className="text-xs font-mono text-amber-400/90 mt-1 uppercase tracking-wider">
+          Direct Access Restricted (403)
+        </p>
 
-          <div className="pt-2">
-            <button
-              onClick={openPopup}
-              className="w-full py-3 px-4 rounded-xl font-semibold text-white bg-emerald-600 hover:bg-emerald-500 transition cursor-pointer shadow-lg shadow-emerald-950/50 flex items-center justify-center gap-2 text-sm"
-            >
-              <span>🌐</span>
-              <span>Launch Onboarding Gateway Popup</span>
-            </button>
-          </div>
+        <div className="mt-5 p-4 bg-slate-950/70 border border-slate-800 rounded-xl text-left text-xs text-slate-300 space-y-2">
+          <p>
+            This hosted onboarding gateway provides headless Meta Embedded Signup integration for authorized partner platforms.
+          </p>
+          <p className="text-[11px] text-slate-400">
+            Directly typing this URL into a browser is restricted. Please initiate WhatsApp onboarding from your designated partner application dashboard.
+          </p>
+        </div>
 
-          <div className="p-3 bg-slate-950/60 border border-slate-800/80 rounded-xl text-[11px] text-slate-400 space-y-1">
-            <p className="font-semibold text-slate-300">Partner Integration URL Pattern:</p>
-            <code className="block font-mono text-emerald-400 break-all">
-              /onboard?workspace_id=...&amp;return_url=...
-            </code>
-          </div>
+        <div className="mt-6 pt-4 border-t border-slate-800 text-[11px] text-slate-500">
+          Waba Guru Multi-Tenant Gateway &bull; Stateless Runtime
         </div>
       </div>
     </div>

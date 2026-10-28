@@ -93,11 +93,11 @@ function CallbackContent() {
       return;
     }
 
-    // 2. Check for missing OAuth code
+    // 2. Check for missing OAuth code / Direct URL access
     if (!code) {
       setStatus("error");
-      setErrorMessage("Missing Authorization Code");
-      setErrorDetails("Meta did not return an authorization token in the callback URL.");
+      setErrorMessage("Direct Access Prohibited (403)");
+      setErrorDetails("The callback endpoint cannot be accessed directly without an active Meta authorization transaction.");
 
       if (window.opener) {
         try {

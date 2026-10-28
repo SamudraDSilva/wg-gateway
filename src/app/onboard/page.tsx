@@ -12,10 +12,27 @@ interface MetaConfig {
 function OnboardingContent() {
   const searchParams = useSearchParams();
   const rawWorkspace = searchParams.get("workspace_id")?.trim();
-  const workspaceId = rawWorkspace || "default";
   const sessionId = searchParams.get("session_id")?.trim() || undefined;
   const returnUrl = searchParams.get("return_url")?.trim() || undefined;
   const appName = searchParams.get("app_name")?.trim() || "Partner Platform";
+
+  const [isClient, setIsClient] = useState(false);
+  const [hasOpener, setHasOpener] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+    setHasOpener(Boolean(window.opener));
+  }, []);
+
+  // Entry Point Validation:
+  // Must have an explicit workspace_id or session_id, AND must have an opener or return_url.
+  // Direct typing of "/onboard" without context is strictly blocked.
+  const isDirectAccess =
+    isClient &&
+    !sessionId &&
+    (!rawWorkspace || (!hasOpener && !returnUrl));
+
+  const workspaceId = rawWorkspace || "default";
 
   const [metaConfig, setMetaConfig] = useState<MetaConfig | null>(null);
   const [loading, setLoading] = useState(true);
@@ -23,7 +40,7 @@ function OnboardingContent() {
   const [error, setError] = useState<string | null>(null);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
 
-  // Fetch Meta configuration dynamically from backend
+  // Fetch Meta configuration dynamically from backend only if entry point is valid
   const fetchConfig = useCallback(async () => {
     try {
       setLoading(true);
@@ -58,8 +75,10 @@ function OnboardingContent() {
   }, []);
 
   useEffect(() => {
-    void fetchConfig();
-  }, [fetchConfig]);
+    if (!isDirectAccess) {
+      void fetchConfig();
+    }
+  }, [fetchConfig, isDirectAccess]);
 
   // In-place direct navigation to Meta OAuth Dialog (NO SECOND POPUP!)
   const handleLaunchInPlace = () => {
@@ -89,6 +108,45 @@ function OnboardingContent() {
 
     window.location.href = `${oauthEndpoint}?${params.toString()}`;
   };
+
+  // Blocked Direct URL Screen
+  if (isDirectAccess) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-center items-center p-4 select-none">
+        <div className="w-full max-w-md bg-slate-900 border border-red-900/60 rounded-2xl p-8 shadow-2xl relative text-center">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 mb-4 mx-auto">
+            <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+            </svg>
+          </div>
+
+          <h1 className="text-xl font-bold text-white tracking-tight">Direct Access Prohibited</h1>
+          <p className="text-xs font-mono text-red-400 mt-1 uppercase tracking-wider">
+            403 &bull; Missing Authorized Entry Point
+          </p>
+
+          <div className="mt-5 p-4 bg-slate-950/80 border border-slate-800 rounded-xl text-left text-xs text-slate-300 space-y-2">
+            <p>
+              This onboarding gateway cannot be opened by typing the URL directly into your browser.
+            </p>
+            <p className="text-[11px] text-slate-400">
+              WhatsApp channel authorization must be initiated from your partner application dashboard with an authenticated workspace context.
+            </p>
+          </div>
+
+          <div className="mt-6 flex justify-center">
+            <button
+              type="button"
+              onClick={() => window.close()}
+              className="px-5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg border border-slate-700 transition cursor-pointer"
+            >
+              Close Window
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-center items-center p-4">
