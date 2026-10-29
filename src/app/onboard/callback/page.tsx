@@ -54,6 +54,7 @@ function CallbackContent() {
   }, [rawState]);
 
   const workspaceId = parsedState.workspace_id || "default";
+  const sessionId = parsedState.session_id;
   const returnUrl = parsedState.return_url;
 
   useEffect(() => {
@@ -132,6 +133,7 @@ function CallbackContent() {
           body: JSON.stringify({
             code,
             workspace_id: workspaceId,
+            session_id: sessionId,
             redirect_uri: redirectUri,
           }),
         });
@@ -199,6 +201,8 @@ function CallbackContent() {
               {
                 type: "WA_ONBOARDING_SUCCESS",
                 workspace_id: workspaceId,
+                session_id: sessionId,
+                connection_id: data.connection?.id ? `conn_${data.connection.id}` : undefined,
                 connection: data.connection,
                 phone_registered: data.status === "connected",
               },
